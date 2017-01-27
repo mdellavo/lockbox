@@ -5,10 +5,9 @@ import os
 from Crypto.Cipher import AES
 from Crypto import Random
 
-random = Random.new()
-
 
 def encrypt(key, val):
+    random = Random.new()
     iv = random.read(AES.block_size)
     cipher = AES.AESCipher(key.ljust(32), AES.MODE_CFB, iv)
     payload = iv + cipher.encrypt(val)
