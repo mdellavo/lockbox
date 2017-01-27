@@ -1,19 +1,7 @@
-import os
 import sys
-import base64
-import getpass
 from argparse import ArgumentParser
 
-from .lib import commit_lockbox, open_lockbox
-
-
-def get_secret(msg="Secret? "):
-    rv = getpass.getpass(msg)
-    return rv
-
-
-def generate_random(bytes=32):
-    return base64.b64encode(os.urandom(bytes))
+from .lib import commit_lockbox, open_lockbox, get_secret, generate_random
 
 
 def cmd_set(lockbox, args):

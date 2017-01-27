@@ -1,9 +1,19 @@
 import json
 import base64
 import os
+import getpass
 
 from Crypto.Cipher import AES
 from Crypto import Random
+
+
+def get_secret(msg="Secret? "):
+    rv = getpass.getpass(msg)
+    return rv
+
+
+def generate_random(bytes=32):
+    return base64.b64encode(os.urandom(bytes))
 
 
 def encrypt(key, val):
