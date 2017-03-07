@@ -1,7 +1,9 @@
 import sys
+import pprint
+import StringIO
 from argparse import ArgumentParser
 
-from .lib import commit_lockbox, open_lockbox, get_secret, generate_random
+from .lib import commit_lockbox, open_lockbox, get_secret, generate_random, serialize
 
 
 def cmd_set(lockbox, args):
@@ -24,21 +26,35 @@ def cmd_gen(lockbox, args):
     lockbox.set(args.key, v)
     commit_lockbox(args.lockbox, lockbox)
 
-CMDS = [("set", cmd_set), ("get", cmd_get), ("gen", cmd_gen)]
+def cmd_dump(lockbox, args):
+    doc = {k: lockbox.get(k) for k in lockbox.keys()}
+    f = StringIO.StringIO()
+    serialize(doc, f)
+    print f.getvalue()
+    
+CMDS = [("set", cmd_set), ("get", cmd_get), ("gen", cmd_gen), ("dump", cmd_dump)]
 
-
-def main():
+def parse_args():
     parser = ArgumentParser(prog="lockbox")
     subparsers = parser.add_subparsers()
 
-    for name, func in CMDS:
+    def add_subparser(name, func):
         subparser = subparsers.add_parser(name)
         subparser.add_argument("lockbox")
-        subparser.add_argument("key")
         subparser.set_defaults(func=func)
+        return subparser
+
+    subparser_set, subparser_get, subparser_gen, subparser_dump = [add_subparser(name, func) for name, func in CMDS]
+
+    for subparser in (subparser_set, subparser_get, subparser_gen):
+        subparser.add_argument("key")
 
     args = parser.parse_args()
+    return args
 
+
+def main():
+    args = parse_args()
     lockbox = open_lockbox(args.lockbox, get_secret("secret? "))
     args.func(lockbox, args)
     return 0

@@ -10,7 +10,7 @@ setup(
     license='MIT',
     packages=['lockbox'],
     install_requires=[
-        "pycrypto"
+        "cryptography"
     ],
     zip_safe=False,
     entry_points={

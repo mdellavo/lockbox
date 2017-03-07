@@ -3,55 +3,75 @@ import base64
 import os
 import getpass
 
-from Crypto.Cipher import AES
-from Crypto import Random
+from cryptography.fernet import Fernet
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+ITERATIONS = 100000
 
 def get_secret(msg="Secret? "):
     rv = getpass.getpass(msg)
     return rv
 
 
-def generate_random(bytes=32):
-    return base64.b64encode(os.urandom(bytes))
+def generate_random(count=32):
+    return base64.b64encode(os.urandom(count))
+
+
+def derive_key(salt, password):
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=base64.b64decode(salt),
+        iterations=ITERATIONS,
+        backend=default_backend()
+    )
+    return base64.urlsafe_b64encode(kdf.derive(password))
 
 
 def encrypt(key, val):
-    random = Random.new()
-    iv = random.read(AES.block_size)
-    cipher = AES.AESCipher(key.ljust(32), AES.MODE_CFB, iv)
-    payload = iv + cipher.encrypt(val)
-    return base64.b64encode(payload)
+    f = Fernet(key)
+    token = f.encrypt(val)
+    return token
 
 
-def decrypt(key, val):
-    bytes = base64.b64decode(val)
-    iv, payload = bytes[:AES.block_size], bytes[AES.block_size:]
-    cipher = AES.AESCipher(key.ljust(32), AES.MODE_CFB, iv)
-    return cipher.decrypt(payload)
+def decrypt(key, token):
+    f = Fernet(key)
+    val = f.decrypt(bytes(token))
+    return val
+
+
+def serialize(doc, f):
+    return json.dump(doc, f, sort_keys=True, indent=4)
 
 
 class LockBox(object):
-    def __init__(self, secret):
-        self.secret = secret
+    def __init__(self, secret, f=None):
         self.storage = {}
         self.values = {}
+        self.key = self.derive_key(secret)
 
-    def load(self, f):
-        self.storage.update(json.load(f))
+    def load(self, secret, f):
+        doc = json.load(f)
+        self.derive_key(secret, doc["_salt"])
+        self.storage.update(doc)
 
-    @classmethod
-    def from_file(cls, secret, f):
-        rv = cls(secret)
-        rv.load(f)
-        return rv
-
+    def derive_key(self, secret, salt=None):
+        if not salt:
+            salt = generate_random(16)
+        self.salt = salt
+        self.key = derive_key(self.salt, secret)
+         
     def encrypt(self, val):
-        return encrypt(self.secret, val)
+        return encrypt(self.key, val)
 
     def decrypt(self, val):
-        return decrypt(self.secret, val)
+        return decrypt(self.key, val)
 
+    def keys(self):
+        return [k for k in self.storage.keys() if k[0] != "_"]
+    
     def __contains__(self, key):
         return key in self.storage
 
@@ -69,14 +89,16 @@ class LockBox(object):
         self.storage[key] = self.encrypt(val)
 
     def serialize(self, f):
-        return json.dump(self.storage, f, sort_keys=True, indent=4)
+        self.storage["_salt"] = self.salt
+        return serialize(self.storage, f)
 
 
 def open_lockbox(path, secret):
+    lockbox = LockBox(secret)
     if os.path.exists(path):
         with open(path) as f:
-            return LockBox.from_file(secret, f)
-    return LockBox(secret)
+            lockbox.load(secret, f)
+    return lockbox
 
 
 def commit_lockbox(path, lockbox):
