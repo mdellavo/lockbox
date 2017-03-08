@@ -1,9 +1,13 @@
+import os
 import sys
 import pprint
 import StringIO
 from argparse import ArgumentParser
+from contextlib import closing
 
-from .lib import commit_lockbox, open_lockbox, get_secret, generate_random, serialize
+from .lib import LockBox, commit_lockbox, get_secret, generate_random, serialize
+
+ENV_KEY = "LOCKBOX_SECRET"
 
 
 def cmd_set(lockbox, args):
@@ -55,7 +59,23 @@ def parse_args():
 
 def main():
     args = parse_args()
-    lockbox = open_lockbox(args.lockbox, get_secret("secret? "))
+
+    secret = os.environ[ENV_KEY] if ENV_KEY in os.environ else get_secret("secret? ")
+
+    lockbox = LockBox(secret)
+
+    if args.lockbox == "-":
+        f = sys.stdin
+    else:
+        path = args.lockbox
+        if not os.path.exists(path):
+            print "{} does not exist".format(path)
+            return 1
+        f = open(path)
+
+    with closing(f):
+        lockbox.load(f)
+
     args.func(lockbox, args)
     return 0
 

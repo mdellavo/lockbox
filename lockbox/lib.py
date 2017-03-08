@@ -19,7 +19,7 @@ def generate_random(count=32):
     return base64.b64encode(os.urandom(count))
 
 
-def derive_key(salt, password):
+def derive_key(salt, secret):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -27,16 +27,20 @@ def derive_key(salt, password):
         iterations=ITERATIONS,
         backend=default_backend()
     )
-    return base64.urlsafe_b64encode(kdf.derive(password))
+    return base64.urlsafe_b64encode(kdf.derive(secret))
 
 
-def encrypt(key, val):
+def encrypt(secret, val, salt=None):
+    salt = salt or generate_random(16)
+    key = derive_key(salt, secret)    
     f = Fernet(key)
     token = f.encrypt(val)
-    return token
+    return salt + "|" + token
 
 
-def decrypt(key, token):
+def decrypt(secret, val):
+    salt, token = val.split("|")
+    key = derive_key(salt, secret)    
     f = Fernet(key)
     val = f.decrypt(bytes(token))
     return val
@@ -47,27 +51,20 @@ def serialize(doc, f):
 
 
 class LockBox(object):
-    def __init__(self, secret, f=None):
+    def __init__(self, secret):
         self.storage = {}
         self.values = {}
-        self.key = self.derive_key(secret)
+        self.secret = secret
 
-    def load(self, secret, f):
+    def load(self, f):
         doc = json.load(f)
-        self.derive_key(secret, doc["_salt"])
         self.storage.update(doc)
 
-    def derive_key(self, secret, salt=None):
-        if not salt:
-            salt = generate_random(16)
-        self.salt = salt
-        self.key = derive_key(self.salt, secret)
-         
     def encrypt(self, val):
-        return encrypt(self.key, val)
+        return encrypt(self.secret, val)
 
     def decrypt(self, val):
-        return decrypt(self.key, val)
+        return decrypt(self.secret, val)
 
     def keys(self):
         return [k for k in self.storage.keys() if k[0] != "_"]
@@ -89,23 +86,17 @@ class LockBox(object):
         self.storage[key] = self.encrypt(val)
 
     def serialize(self, f):
-        self.storage["_salt"] = self.salt
         return serialize(self.storage, f)
-
-
-def open_lockbox(path, secret):
-    lockbox = LockBox(secret)
-    if os.path.exists(path):
-        with open(path) as f:
-            lockbox.load(secret, f)
-    return lockbox
 
 
 def commit_lockbox(path, lockbox):
     tmp_path = path + '.tmp'
     f = open(tmp_path, "w")
-    lockbox.serialize(f)
-    f.flush()
-    os.fsync(f.fileno())
-    f.close()
-    os.rename(tmp_path, path)
+    try:
+        lockbox.serialize(f)
+        f.flush()
+        os.fsync(f.fileno())
+        os.rename(tmp_path, path)
+    finally:
+        f.close()
+
