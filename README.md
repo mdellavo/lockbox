@@ -2,6 +2,24 @@
 
 Library and command-line tool to store encrypted secrets
 
+## Usage
+
+## Examples
+```bash
+$ LOCKBOX_SECRET=test lockbox set test.lockbox foo
+v?
+$ cat test.lockbox
+{
+    "foo": "z3HKLkfsHedroHoaA323qQ==|gAAAAABYv2v4vqPokfYoJjJDiP5tw01QCyO4jGpSwDv5KqqoTIqDw3Yq_bkyjaCgP4Vhd6-Ms2L_rieA04fVTecpDUBf7iETlw=="
+}
+$ LOCKBOX_SECRET=test lockbox get test.lockbox foo
+abc123
+$ LOCKBOX_SECRET=test lockbox dump test.lockbox
+{
+    "foo": "abc123"
+}
+```
+
 ## Author
 
 Marc DellaVolpe  (marc.dellavolpe@gmail.com)

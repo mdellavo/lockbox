@@ -64,17 +64,16 @@ def main():
 
     lockbox = LockBox(secret)
 
+    f = None
     if args.lockbox == "-":
         f = sys.stdin
     else:
         path = args.lockbox
-        if not os.path.exists(path):
-            print "{} does not exist".format(path)
-            return 1
-        f = open(path)
-
-    with closing(f):
-        lockbox.load(f)
+        if os.path.exists(path):
+            f = open(path)
+    if f:
+        with closing(f):
+            lockbox.load(f)
 
     args.func(lockbox, args)
     return 0

@@ -47,7 +47,8 @@ def decrypt(secret, val):
 
 
 def serialize(doc, f):
-    return json.dump(doc, f, sort_keys=True, indent=4)
+    json.dump(doc, f, sort_keys=True, indent=4)
+    f.write("\n")
 
 
 class LockBox(object):
