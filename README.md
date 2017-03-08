@@ -4,8 +4,25 @@ Library and command-line tool to store encrypted secrets
 
 ## Usage
 
+```
+$ lockbox --help
+usage: lockbox [-h] {set,get,gen,dump} ...
+
+positional arguments:
+  {set,get,gen,dump}
+    set               Add a key to the lockbox
+    get               Get a key from the lockbox
+    gen               Generate a key and store in lockbox
+    dump              Dump plain-text lockbox as JSON
+
+optional arguments:
+  -h, --help          show this help message and exit
+```
+
+Each subcommand offer's it's own help.  "-" may be used in path for stdin.
+
 ## Examples
-```bash
+```sh
 $ LOCKBOX_SECRET=test lockbox set test.lockbox foo
 v?
 $ cat test.lockbox
