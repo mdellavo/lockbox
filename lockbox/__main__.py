@@ -98,7 +98,7 @@ def main():
     if args.stdin:
         f = sys.stdin
     elif os.path.exists(args.lockbox):
-        f = open(args.lockbox, mode=mode)
+        f = open(args.lockbox)
     else:
         f = None
 
