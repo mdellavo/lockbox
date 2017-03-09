@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 import pprint
 import StringIO
 from argparse import ArgumentParser
@@ -49,10 +50,13 @@ def cmd_dump(lockbox, args):
     
 def cmd_import(lockbox, args):
     doc = json.load(sys.stdin)
-    
+    for k, v in doc.items():
+        lockbox.set(k, v)
+    store_lockbox(args.lockbox, lockbox)
 
-    
+
 CMDS = {k[len(CMD_PREFIX):]: v for k, v in locals().items() if k.startswith(CMD_PREFIX) and callable(v)}
+
 
 def parse_args():
     parser = ArgumentParser(prog="lockbox")
@@ -62,11 +66,11 @@ def parse_args():
         func = CMDS[name]
         subparser = subparsers.add_parser(name, help=func.__doc__)
         subparser.add_argument("lockbox", help="path to lockbox")
-        if takes_key:
+        if key:
             subparser.add_argument("key", help="key to operate on")
-        if takes_stdin:
+        if stdin:
             subparser.add_argument("--stdin", action="store_true", help="load dropbox from stdin")
-        subparser.set_defaults(func=func)
+        subparser.set_defaults(func=func, stdin=False)
         return subparser
     
     subparsers_set = add_subparser("set", key=True, stdin=True)

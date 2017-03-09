@@ -34,7 +34,7 @@ def encrypt(secret, val, salt=None):
     salt = salt or generate_random(16)
     key = derive_key(salt, secret)    
     f = Fernet(key)
-    token = f.encrypt(val)
+    token = f.encrypt(bytes(val))
     return salt + "|" + token
 
 
